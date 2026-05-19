@@ -9,6 +9,7 @@ services:
       - "8001:8000"
     restart: unless-stopped
     volumes:
+      - ./data/demo_cameras:/app/demo_cameras
       - sialar_data:/app/data
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
