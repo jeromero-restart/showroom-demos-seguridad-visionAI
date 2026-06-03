@@ -50,12 +50,12 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown (cleanup resources if needed)
-    logger.info("SIALAR backend shutting down")
+    logger.info("Live Cam Detection backend shutting down")
     app.state.model = None
 
 
 app = FastAPI(
-    title="SIALAR Backend",
+    title="Live Cam Detection Backend",
     description="PoC video analytics with YOLOv8",
     version="0.0.1",
     lifespan=lifespan,
@@ -79,4 +79,4 @@ app.include_router(live_stream.router)
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "sialar-backend"}
+    return {"status": "ok", "service": "livecam-backend"}

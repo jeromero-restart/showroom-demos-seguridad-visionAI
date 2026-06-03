@@ -1,5 +1,5 @@
 """
-Pure Python rule engine for SIALAR video analytics.
+Pure Python rule engine for live cam detection video analytics.
 
 NO FastAPI imports — this module is unit-testable in isolation.
 
