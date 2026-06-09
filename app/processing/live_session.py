@@ -347,6 +347,17 @@ class LiveSession:
                             for ev in events:
                                 if ev is not None:
                                     self._fanout_event({**ev, "type": "event"})
+
+                        # Live count tick (additive): how many entities are in the zone
+                        # right now. Emitted once per YOLO inference (~PROCESSED_FPS), so
+                        # the side panel can show a real-time counter without flooding SSE.
+                        in_zone_now = sum(1 for d in last_detections if d.get("in_zone"))
+                        self._fanout_event({
+                            "type": "count",
+                            "in_zone": in_zone_now,
+                            "total": len(last_detections),
+                            "timestamp_s": (frame_idx / source_fps) if source_fps else 0.0,
+                        })
                     except cv2.error as exc:
                         # Frame-size mismatch in ByteTrack GMC (e.g. variable-resolution video).
                         # Reset tracker so the next frame starts fresh instead of crashing the session.
