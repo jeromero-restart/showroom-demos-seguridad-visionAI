@@ -29,17 +29,17 @@ def _cam(id, name, file, description, resolution="HD", fps=25):
 
 
 DEMO_CAMERAS = [
-    _cam("cam_001", "Playa de Estacionamiento",
+    _cam("cam_001", "Intersección Vial",
          "parking.mp4",
-         "Cámara de estacionamiento exterior — detección de vehículos y personas.",
+         "Cámara de cruce urbano — detección de vehículos y personas en tránsito.",
          resolution="720p", fps=30),
-    _cam("cam_002", "Intersección Vial",
+    _cam("cam_002", "Animales cerca del perímetro",
          "street.mp4",
-         "Cámara de cruce urbano — detección de personas y vehículos en tránsito.",
+         "Zona perimetral — detección de animales en las inmediaciones.",
          resolution="720p", fps=25),
-    _cam("cam_003", "Acceso al Edificio",
+    _cam("cam_003", "Perímetro edificio",
          "building.mp4",
-         "Cámara de entrada principal — control de acceso y detección mixta.",
+         "Vigilancia del perímetro del edificio — detección de intrusiones.",
          resolution="720p", fps=30),
     _cam("cam_004", "Peatonal — Personas",
          "personas.mp4",
