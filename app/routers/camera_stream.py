@@ -25,7 +25,12 @@ async def stream_camera_video(camera_id: str):
                 return FileResponse(
                     cam.video_path,
                     media_type="video/mp4",
-                    headers={"Accept-Ranges": "bytes"},
+                    headers={
+                        "Accept-Ranges": "bytes",
+                        # Force the browser to revalidate: camera IDs are reused across
+                        # video swaps, so without this the old cached clip is served.
+                        "Cache-Control": "no-cache",
+                    },
                 )
             raise HTTPException(status_code=503, detail="Video file not available")
     raise HTTPException(status_code=404, detail="Camera not found")
