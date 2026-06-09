@@ -51,6 +51,10 @@ class RuleEngine:
         entity_class: Expected entity class name (e.g. "person")
     """
 
+    # Minimum seconds between alerts of the same trigger type, regardless of
+    # track_id. Debounces tracker ID switches / detection flicker for the demo.
+    _TRIGGER_COOLDOWN_S = 3.0
+
     def __init__(
         self,
         trigger_config: dict,
@@ -82,6 +86,11 @@ class RuleEngine:
         self._recent_events: dict[tuple[int, str], tuple[float, str]] = {}
         # key: (track_id, trigger_type)
         # value: (last_event_timestamp_s, event_id)
+
+        # Per-trigger-type cooldown: last fire time per trigger_type, regardless of
+        # track_id. Absorbs tracker ID switches and detection flicker that would
+        # otherwise spam alerts for the SAME physical entity under new track ids.
+        self._last_type_fire_s: dict[str, float] = {}
 
     # ------------------------------------------------------------------
     # Deduplication helpers
@@ -378,6 +387,15 @@ class RuleEngine:
             logger.debug(f"Suppressed duplicate: track {track_id}, {event['trigger_type']} at {event['timestamp_s']}s")
             return None  # Caller filters None returns
 
+        # Per-trigger-type cooldown: suppress repeats regardless of track_id so a
+        # single entity whose track id keeps switching doesn't spam alerts.
+        ttype = event["trigger_type"]
+        last_type_fire = self._last_type_fire_s.get(ttype)
+        if last_type_fire is not None and (event["timestamp_s"] - last_type_fire) < self._TRIGGER_COOLDOWN_S:
+            logger.debug(f"Suppressed by cooldown: {ttype} at {event['timestamp_s']}s")
+            return None
+
         # Record event in dedup memory
         self._record_event(track_id, event["trigger_type"], event["timestamp_s"], event["event_id"])
+        self._last_type_fire_s[ttype] = event["timestamp_s"]
         return event
