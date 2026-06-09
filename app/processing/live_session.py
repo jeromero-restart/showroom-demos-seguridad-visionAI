@@ -60,11 +60,11 @@ _TRACKER_CFG = os.path.join(os.path.dirname(__file__), "bytetrack_nogmc.yaml")
 
 logger = logging.getLogger(__name__)
 
-JPEG_QUALITY = 75
-JPEG_QUEUE_SIZE = 5     # ~200ms of buffering at 25fps before we drop
+JPEG_QUALITY = 60      # lighter frames → faster client decode → less MJPEG lag buildup
+JPEG_QUEUE_SIZE = 2     # smaller buffer → backend holds fewer stale frames, stays current
 EVENT_QUEUE_SIZE = 256  # events are sparse; this just guards backlog spikes
 FROZEN_FRAME_INTERVAL_S = 1.0  # how often to re-emit the "stream finalizado" frame
-STREAM_FPS = max(1, int(os.getenv("STREAM_FPS", "10")))  # max frames/s emitted to subscribers
+STREAM_FPS = max(1, int(os.getenv("STREAM_FPS", "8")))  # max frames/s emitted to subscribers
 
 # BGR drawing colors
 COLOR_IN_ZONE = (0, 64, 220)
