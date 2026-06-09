@@ -22,7 +22,11 @@ RUN pip install --no-cache-dir \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Pre-download YOLOv8s weights into image (Approach A — avoids runtime download)
+# Pre-download YOLOv8 weights into the image at the runtime CWD (/app) so the model
+# is NOT re-downloaded on every container start. WORKDIR must be set first: YOLO()
+# saves to the current dir and the app runs from /app — otherwise it lands in / and
+# gets re-fetched at startup (~37s).
+WORKDIR /app
 RUN python3 -c "from ultralytics import YOLO; YOLO('yolov8m.pt')"
 
 # Create demo cameras directory and generate synthetic test videos using ffmpeg static build
