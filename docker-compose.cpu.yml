@@ -8,6 +8,11 @@ services:
     ports:
       - "8001:8000"
     restart: unless-stopped
+    environment:
+      # Telegram alerts (optional): set them in .env next to this file; empty = disabled
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_MIN_INTERVAL_S=${TELEGRAM_MIN_INTERVAL_S:-30}
     volumes:
       - ./data/demo_cameras:/app/demo_cameras
       - sialar_data:/app/data

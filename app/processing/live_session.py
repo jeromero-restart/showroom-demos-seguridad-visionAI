@@ -54,13 +54,16 @@ from app.processing.detector import (
     extract_detections_from_result,
     get_model_classes,
 )
+from app.config.cameras import ALL_CAMERAS
 from app.processing.rule_engine import RuleEngine
+from app.processing.telegram_notifier import build_caption, get_notifier
 
 _TRACKER_CFG = os.path.join(os.path.dirname(__file__), "bytetrack_nogmc.yaml")
 
 logger = logging.getLogger(__name__)
 
 JPEG_QUALITY = 60      # lighter frames → faster client decode → less MJPEG lag buildup
+ALERT_JPEG_QUALITY = 85  # Telegram alert photos are rare; send them sharper than the stream
 JPEG_QUEUE_SIZE = 2     # smaller buffer → backend holds fewer stale frames, stays current
 EVENT_QUEUE_SIZE = 256  # events are sparse; this just guards backlog spikes
 FROZEN_FRAME_INTERVAL_S = 1.0  # how often to re-emit the "stream finalizado" frame
@@ -102,6 +105,8 @@ class LiveSession:
         self.video_path = video_path
         self.area_config = area_config
         self.model = model
+        self.camera_name = next((c.name for c in ALL_CAMERAS if c.id == camera_id), camera_id)
+        self._notifier = get_notifier()
 
         self._subscribers: set[Subscriber] = set()
         self._lock = threading.Lock()
@@ -312,6 +317,7 @@ class LiveSession:
                     break  # EOF
 
                 # YOLO stride is relative to streamed (decoded) frames.
+                frame_events: list[dict] = []
                 if streamed_idx % yolo_stride == 0:
                     try:
                         results = self.model.track(
@@ -344,9 +350,7 @@ class LiveSession:
                                     f"(in_zone: {sum(1 for d in last_detections if d.get('in_zone'))})"
                                 )
                             events = rule_engine.evaluate(frame_idx, last_detections)
-                            for ev in events:
-                                if ev is not None:
-                                    self._fanout_event({**ev, "type": "event"})
+                            frame_events = [ev for ev in events if ev is not None]
                     except cv2.error as exc:
                         # Frame-size mismatch in ByteTrack GMC (e.g. variable-resolution video).
                         # Reset tracker so the next frame starts fresh instead of crashing the session.
@@ -366,6 +370,13 @@ class LiveSession:
                     payload = buf.tobytes()
                     self._last_jpeg = payload
                     self._fanout_jpeg(payload)
+
+                # Events go out after the annotated frame exists, so the Telegram alert
+                # carries the exact frame that fired them (bboxes + zone included).
+                if frame_events:
+                    sent = self._notify_telegram(frame_events, annotated)
+                    for ev in frame_events:
+                        self._fanout_event({**ev, "type": "event", "telegram": sent})
 
                 # Throttle to effective_fps. next_tick only advances on emitted frames.
                 next_tick += frame_period
@@ -393,6 +404,19 @@ class LiveSession:
                         return
         finally:
             cap.release()
+
+    # ---------------- alerts ----------------
+
+    def _notify_telegram(self, events: list[dict], annotated: np.ndarray) -> bool:
+        """Queue a Telegram alert with this frame; False if disabled or throttled."""
+        if self._notifier is None:
+            return False
+
+        def encode() -> bytes | None:
+            ok, buf = cv2.imencode(".jpg", annotated, [int(cv2.IMWRITE_JPEG_QUALITY), ALERT_JPEG_QUALITY])
+            return buf.tobytes() if ok else None
+
+        return self._notifier.notify(self.camera_id, build_caption(self.camera_name, events), encode)
 
     # ---------------- annotation ----------------
 
